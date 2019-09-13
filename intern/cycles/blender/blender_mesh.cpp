@@ -29,6 +29,7 @@
 
 #include "util/util_algorithm.h"
 #include "util/util_foreach.h"
+#include "util/util_hash.h"
 #include "util/util_logging.h"
 #include "util/util_math.h"
 
@@ -679,6 +680,50 @@ static void attr_create_pointiness(Scene *scene, Mesh *mesh, BL::Mesh &b_mesh, b
   }
 }
 
+/* Create Random Per Island attribute. */
+static void attr_create_random_per_island(Scene *scene,
+                                          Mesh *mesh,
+                                          BL::Mesh &b_mesh,
+                                          bool subdivision)
+{
+  if (!mesh->need_attribute(scene, ATTR_STD_RANDOM_PER_ISLAND)) {
+    return;
+  }
+  int number_of_vertices = b_mesh.vertices.length();
+  uint *indices = new uint[number_of_vertices];
+  for (int i = 0; i < number_of_vertices; i++) {
+    indices[i] = i;
+  }
+
+  for (int i = 0; i < number_of_vertices; i++) {
+    bool done = true;
+    BL::Mesh::edges_iterator e;
+    for (b_mesh.edges.begin(e); e != b_mesh.edges.end(); ++e) {
+      int v1 = e->vertices()[0];
+      int v2 = e->vertices()[1];
+      if (indices[v1] == indices[v2]) {
+        continue;
+      }
+      int minimum = min(indices[v1], indices[v2]);
+      indices[v1] = minimum;
+      indices[v2] = minimum;
+      done = false;
+    }
+
+    if (done) {
+      break;
+    }
+  }
+
+  AttributeSet &attributes = (subdivision) ? mesh->subd_attributes : mesh->attributes;
+  Attribute *attribute = attributes.add(ATTR_STD_RANDOM_PER_ISLAND);
+  float *data = attribute->data_float();
+  for (int i = 0; i < number_of_vertices; i++) {
+    data[i] = hash_uint_to_float(indices[i]);
+  }
+  delete[] indices;
+}
+
 /* Create Mesh */
 
 static void create_mesh(Scene *scene,
@@ -799,6 +844,7 @@ static void create_mesh(Scene *scene,
    */
   attr_create_pointiness(scene, mesh, b_mesh, subdivision);
   attr_create_vertex_color(scene, mesh, b_mesh, subdivision);
+  attr_create_random_per_island(scene, mesh, b_mesh, subdivision);
 
   if (subdivision) {
     attr_create_subd_uv_map(scene, mesh, b_mesh, subdivide_uvs);
