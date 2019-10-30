@@ -277,8 +277,8 @@ static void bm_edge_pair_elem_setup(BMEdge *e,
 static bool bm_vertxedge_isect_impl_ex(BMVert *v,
                                        BMEdge *e,
                                        int edge_index,
-                                       float co[3],
-                                       float dir[3],
+                                       const float co[3],
+                                       const float dir[3],
                                        float lambda,
                                        float data_dist_sq,
                                        int *data_cut_edges_len,
@@ -411,10 +411,10 @@ static void bm_edgexedge_isect_impl(struct EDBMSplitData *data,
                                     int index_b,
                                     BMEdge *e_a,
                                     BMEdge *e_b,
-                                    float co_a[3],
-                                    float dir_a[3],
-                                    float co_b[3],
-                                    float dir_b[3],
+                                    const float co_a[3],
+                                    const float dir_a[3],
+                                    const float co_b[3],
+                                    const float dir_b[3],
                                     float lambda_a,
                                     float lambda_b)
 {
@@ -649,6 +649,8 @@ bool BM_mesh_intersect_edges(BMesh *bm, const char hflag, const float dist, GHas
   BMVert *v;
   BMEdge *e;
   int i;
+
+  BM_mesh_elem_table_ensure(bm, BM_VERT | BM_EDGE);
 
   /* Store all intersections in this array. */
   struct EDBMSplitElem(*pair_iter)[2], (*pair_array)[2] = NULL;

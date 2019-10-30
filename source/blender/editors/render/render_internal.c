@@ -80,8 +80,6 @@
 #include "IMB_colormanagement.h"
 #include "IMB_imbuf_types.h"
 
-#include "GPU_shader.h"
-
 #include "RNA_access.h"
 #include "RNA_define.h"
 
@@ -861,7 +859,7 @@ static void screen_render_cancel(bContext *C, wmOperator *op)
 
 static void clean_viewport_memory_base(Base *base)
 {
-  if ((base->flag & BASE_VISIBLE) == 0) {
+  if ((base->flag & BASE_VISIBLE_DEPSGRAPH) == 0) {
     return;
   }
 

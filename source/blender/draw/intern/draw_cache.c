@@ -53,7 +53,6 @@ static struct DRWShapeCache {
   GPUBatch *drw_cursor;
   GPUBatch *drw_cursor_only_circle;
   GPUBatch *drw_fullscreen_quad;
-  GPUBatch *drw_fullscreen_quad_texcoord;
   GPUBatch *drw_quad;
   GPUBatch *drw_quad_wires;
   GPUBatch *drw_grid;
@@ -72,8 +71,6 @@ static struct DRWShapeCache {
   GPUBatch *drw_empty_capsule_body;
   GPUBatch *drw_empty_capsule_cap;
   GPUBatch *drw_empty_cone;
-  GPUBatch *drw_arrows;
-  GPUBatch *drw_axis_names;
   GPUBatch *drw_image_plane;
   GPUBatch *drw_image_plane_wire;
   GPUBatch *drw_field_wind;
@@ -99,7 +96,6 @@ static struct DRWShapeCache {
   GPUBatch *drw_bone_octahedral_wire;
   GPUBatch *drw_bone_box;
   GPUBatch *drw_bone_box_wire;
-  GPUBatch *drw_bone_wire_wire;
   GPUBatch *drw_bone_envelope;
   GPUBatch *drw_bone_envelope_outline;
   GPUBatch *drw_bone_point;
@@ -111,7 +107,6 @@ static struct DRWShapeCache {
   GPUBatch *drw_camera;
   GPUBatch *drw_camera_frame;
   GPUBatch *drw_camera_tria;
-  GPUBatch *drw_camera_focus;
   GPUBatch *drw_particle_cross;
   GPUBatch *drw_particle_circle;
   GPUBatch *drw_particle_axis;
@@ -347,6 +342,7 @@ GPUBatch *DRW_cache_fullscreen_quad_get(void)
       attr_id.pos = GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
       attr_id.uvs = GPU_vertformat_attr_add(&format, "uvs", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
       GPU_vertformat_alias_add(&format, "texCoord");
+      GPU_vertformat_alias_add(&format, "orco"); /* Fix driver bug (see T70004) */
     }
 
     GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
@@ -592,7 +588,7 @@ GPUBatch *DRW_cache_circle_get(void)
 GPUBatch *DRW_cache_square_get(void)
 {
   if (!SHC.drw_square) {
-    float p[4][3] = {
+    const float p[4][3] = {
         {1.0f, 0.0f, 1.0f}, {1.0f, 0.0f, -1.0f}, {-1.0f, 0.0f, -1.0f}, {-1.0f, 0.0f, 1.0f}};
 
     /* Position Only 3D format */
@@ -1801,7 +1797,7 @@ GPUBatch *DRW_cache_light_spot_volume_get(void)
 GPUBatch *DRW_cache_light_spot_square_get(void)
 {
   if (!SHC.drw_light_spot_square) {
-    float p[5][3] = {
+    const float p[5][3] = {
         {0.0f, 0.0f, 0.0f},
         {1.0f, 1.0f, -1.0f},
         {1.0f, -1.0f, -1.0f},
@@ -1840,7 +1836,7 @@ GPUBatch *DRW_cache_light_spot_square_get(void)
 GPUBatch *DRW_cache_light_spot_square_volume_get(void)
 {
   if (!SHC.drw_light_spot_square_volume) {
-    float p[5][3] = {
+    const float p[5][3] = {
         {0.0f, 0.0f, 0.0f},
         {1.0f, 1.0f, -1.0f},
         {1.0f, -1.0f, -1.0f},
@@ -1952,7 +1948,7 @@ GPUBatch *DRW_cache_lightprobe_cube_get(void)
     int v_idx = 0;
     const float sin_pi_3 = 0.86602540378f;
     const float cos_pi_3 = 0.5f;
-    float v[7][3] = {
+    const float v[7][3] = {
         {0.0f, 1.0f, 0.0f},
         {sin_pi_3, cos_pi_3, 0.0f},
         {sin_pi_3, -cos_pi_3, 0.0f},
@@ -2057,7 +2053,7 @@ GPUBatch *DRW_cache_lightprobe_planar_get(void)
   if (!SHC.drw_lightprobe_planar) {
     int v_idx = 0;
     const float sin_pi_3 = 0.86602540378f;
-    float v[4][3] = {
+    const float v[4][3] = {
         {0.0f, 0.5f, 0.0f},
         {sin_pi_3, 0.0f, 0.0f},
         {0.0f, -0.5f, 0.0f},

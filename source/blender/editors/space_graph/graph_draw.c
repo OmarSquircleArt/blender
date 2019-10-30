@@ -39,7 +39,6 @@
 #include "BKE_curve.h"
 #include "BKE_fcurve.h"
 
-#include "GPU_draw.h"
 #include "GPU_immediate.h"
 #include "GPU_matrix.h"
 #include "GPU_state.h"
@@ -879,10 +878,6 @@ static void graph_draw_driver_debug(bAnimContext *ac, ID *id, FCurve *fcu)
   short mapping_flag = ANIM_get_normalization_flags(ac);
   float offset;
   float unitfac = ANIM_unit_mapping_get_factor(ac->scene, id, fcu, mapping_flag, &offset);
-
-  /* for now, only show when debugging driver... */
-  // if ((driver->flag & DRIVER_FLAG_SHOWDEBUG) == 0)
-  //  return;
 
   const uint shdr_pos = GPU_vertformat_attr_add(
       immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);

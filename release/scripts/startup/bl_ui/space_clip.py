@@ -1221,7 +1221,7 @@ class CLIP_PT_tools_grease_pencil_draw(AnnotationDrawingToolsPanel, Panel):
 class CLIP_MT_view_zoom(Menu):
     bl_label = "Fractional Zoom"
 
-    def draw(self, context):
+    def draw(self, _context):
         layout = self.layout
 
         ratios = ((1, 8), (1, 4), (1, 2), (1, 1), (2, 1), (4, 1), (8, 1))
@@ -1255,6 +1255,7 @@ class CLIP_MT_view(Menu):
             layout.operator("clip.view_selected")
             layout.operator("clip.view_all")
             layout.operator("clip.view_all", text="View Fit").fit_view = True
+            layout.operator("clip.view_center_cursor")
 
             layout.separator()
 

@@ -439,10 +439,10 @@ void BKE_object_eval_eval_base_flags(Depsgraph *depsgraph,
    * assumed viewport visibility. Select-ability does not matter here. */
   if (DEG_get_mode(depsgraph) == DAG_EVAL_RENDER) {
     if (base->flag & BASE_ENABLED_RENDER) {
-      base->flag |= BASE_VISIBLE;
+      base->flag |= BASE_VISIBLE_DEPSGRAPH;
     }
     else {
-      base->flag &= ~BASE_VISIBLE;
+      base->flag &= ~BASE_VISIBLE_DEPSGRAPH;
     }
   }
 
@@ -453,6 +453,7 @@ void BKE_object_eval_eval_base_flags(Depsgraph *depsgraph,
     object->base_flag &= ~(BASE_SELECTED | BASE_SELECTABLE);
   }
   object->base_local_view_bits = base->local_view_bits;
+  object->runtime.local_collections_bits = base->local_collections_bits;
 
   if (object->mode == OB_MODE_PARTICLE_EDIT) {
     for (ParticleSystem *psys = object->particlesystem.first; psys != NULL; psys = psys->next) {

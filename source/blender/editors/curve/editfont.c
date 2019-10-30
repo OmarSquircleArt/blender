@@ -60,7 +60,6 @@
 #include "ED_curve.h"
 #include "ED_object.h"
 #include "ED_screen.h"
-#include "ED_util.h"
 #include "ED_view3d.h"
 
 #include "UI_interface.h"
@@ -1877,6 +1876,7 @@ void ED_curve_editfont_make(Object *obedit)
 
   memcpy(ef->textbufinfo, cu->strinfo, ef->len * sizeof(CharInfo));
 
+  ef->pos = cu->pos;
   if (ef->pos > ef->len) {
     ef->pos = ef->len;
   }
@@ -1884,7 +1884,6 @@ void ED_curve_editfont_make(Object *obedit)
   cu->curinfo = ef->textbufinfo[ef->pos ? ef->pos - 1 : 0];
 
   /* Other vars */
-  ef->pos = cu->pos;
   ef->selstart = cu->selstart;
   ef->selend = cu->selend;
 
@@ -2201,6 +2200,7 @@ void FONT_OT_unlink(wmOperatorType *ot)
 bool ED_curve_editfont_select_pick(
     bContext *C, const int mval[2], bool extend, bool deselect, bool toggle)
 {
+  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   Object *obedit = CTX_data_edit_object(C);
   Curve *cu = obedit->data;
   ViewContext vc;
@@ -2212,7 +2212,7 @@ bool ED_curve_editfont_select_pick(
   const float dist = ED_view3d_select_dist_px();
   float dist_sq_best = dist * dist;
 
-  ED_view3d_viewcontext_init(C, &vc);
+  ED_view3d_viewcontext_init(C, &vc, depsgraph);
 
   ED_view3d_init_mats_rv3d(vc.obedit, vc.rv3d);
 

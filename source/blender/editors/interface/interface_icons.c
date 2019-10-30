@@ -27,7 +27,6 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "GPU_draw.h"
 #include "GPU_matrix.h"
 #include "GPU_batch.h"
 #include "GPU_immediate.h"
@@ -695,6 +694,7 @@ static void init_event_icons(void)
   INIT_EVENT_ICON(ICON_EVENT_PAGEUP, PAGEUPKEY, KM_ANY);
   INIT_EVENT_ICON(ICON_EVENT_PAGEDOWN, PAGEDOWNKEY, KM_ANY);
   INIT_EVENT_ICON(ICON_EVENT_RETURN, RETKEY, KM_ANY);
+  INIT_EVENT_ICON(ICON_EVENT_SPACEKEY, SPACEKEY, KM_ANY);
 
   g_di_event_list = di_next;
 
@@ -778,7 +778,7 @@ static ImBuf *create_mono_icon_with_border(ImBuf *buf,
           const int blurred_alpha_offset = by * (ICON_GRID_W + 2 * ICON_MONO_BORDER_OUTSET) + bx;
           const int offset_write = (sy + by) * buf->x + (sx + bx);
           const float blurred_alpha = blurred_alpha_buffer[blurred_alpha_offset];
-          float border_srgb[4] = {
+          const float border_srgb[4] = {
               0, 0, 0, MIN2(1.0, blurred_alpha * border_sharpness) * border_intensity};
 
           const unsigned int color_read = buf->rect[offset_write];
@@ -1584,7 +1584,6 @@ static struct {
   IconTextureDrawCall normal;
   IconTextureDrawCall border;
   bool enabled;
-  float mat[4][4];
 } g_icon_draw_cache = {{{{{0}}}}};
 
 void UI_icon_draw_cache_begin(void)

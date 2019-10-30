@@ -26,35 +26,36 @@
  * FILE FORMAT
  * ===========
  *
- * IFF-style structure  (but not IFF compatible!)
+ * IFF-style structure (but not IFF compatible!)
  *
- * start file:
+ * Start file:
  * <pre>
- *     BLENDER_V100    12 bytes  (version 1.00)
- *                     V = big endian, v = little endian
- *                     _ = 4 byte pointer, - = 8 byte pointer
+ * `BLENDER_V100`  `12` bytes  (version 1.00 is just an example).
+ *                 `V` = big endian, `v` = little endian.
+ *                 `_` = 4 byte pointer, `-` = 8 byte pointer.
  * </pre>
  *
  * data-blocks: (also see struct #BHead).
  * <pre>
- *     <bh.code>           4 chars
- *     <bh.len>            int,  len data after BHead
- *     <bh.old>            void,  old pointer
- *     <bh.SDNAnr>         int
- *     <bh.nr>             int, in case of array: number of structs
- *     data
- *     ...
- *     ...
+ * `bh.code`       `char[4]` see `BLO_blend_defs.h` for a list of known types.
+ * `bh.len`        `int32` length data after #BHead in bytes.
+ * `bh.old`        `void *` old pointer (the address at the time of writing the file).
+ * `bh.SDNAnr`     `int32` struct index of structs stored in #DNA1 data.
+ * `bh.nr`         `int32` in case of array: number of structs.
+ * data
+ * ...
+ * ...
  * </pre>
  *
  * Almost all data in Blender are structures. Each struct saved
  * gets a BHead header.  With BHead the struct can be linked again
- * and compared with StructDNA .
+ * and compared with #StructDNA.
+
  * WRITE
  * =====
  *
  * Preferred writing order: (not really a must, but why would you do it random?)
- * Any case: direct data is ALWAYS after the lib block
+ * Any case: direct data is ALWAYS after the lib block.
  *
  * (Local file data)
  * - for each LibBlock
@@ -157,7 +158,6 @@
 #include "BKE_layer.h"
 #include "BKE_library_override.h"
 #include "BKE_main.h"
-#include "BKE_mesh.h"
 #include "BKE_modifier.h"
 #include "BKE_node.h"
 #include "BKE_pointcache.h"
@@ -2853,12 +2853,6 @@ static void write_area_regions(WriteData *wd, ScrArea *area)
         writestruct(wd, DATA, View3D, 1, v3d->localvd);
       }
 
-      if (v3d->fx_settings.ssao) {
-        writestruct(wd, DATA, GPUSSAOSettings, 1, v3d->fx_settings.ssao);
-      }
-      if (v3d->fx_settings.dof) {
-        writestruct(wd, DATA, GPUDOFSettings, 1, v3d->fx_settings.dof);
-      }
       write_view3dshading(wd, &v3d->shading);
     }
     else if (sl->spacetype == SPACE_GRAPH) {
@@ -3637,7 +3631,9 @@ static void write_libraries(WriteData *wd, Main *main)
       found_one = false;
       while (!found_one && tot--) {
         for (id = lbarray[tot]->first; id; id = id->next) {
-          if (id->us > 0 && (id->tag & LIB_TAG_EXTERN)) {
+          if (id->us > 0 &&
+              ((id->tag & LIB_TAG_EXTERN) ||
+               ((id->tag & LIB_TAG_INDIRECT) && (id->flag & LIB_INDIRECT_WEAK_LINK)))) {
             found_one = true;
             break;
           }
@@ -3667,7 +3663,9 @@ static void write_libraries(WriteData *wd, Main *main)
       /* Write link placeholders for all direct linked IDs. */
       while (a--) {
         for (id = lbarray[a]->first; id; id = id->next) {
-          if (id->us > 0 && (id->tag & LIB_TAG_EXTERN)) {
+          if (id->us > 0 &&
+              ((id->tag & LIB_TAG_EXTERN) ||
+               ((id->tag & LIB_TAG_INDIRECT) && (id->flag & LIB_INDIRECT_WEAK_LINK)))) {
             if (!BKE_idcode_is_linkable(GS(id->name))) {
               printf(
                   "ERROR: write file: data-block '%s' from lib '%s' is not linkable "

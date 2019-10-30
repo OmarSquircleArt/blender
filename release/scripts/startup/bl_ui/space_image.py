@@ -113,6 +113,8 @@ class IMAGE_MT_view(Menu):
         layout.operator("image.view_all", text="Frame All")
         layout.operator("image.view_all", text="Frame All Fit").fit_view = True
 
+        layout.operator("image.view_center_cursor", text="Center View to Cursor")
+
         layout.separator()
 
         if show_render:
@@ -238,6 +240,7 @@ class IMAGE_MT_image(Menu):
             layout.separator()
 
             layout.menu("IMAGE_MT_image_invert")
+            layout.operator("image.resize", text="Resize")
 
         if ima and not show_render:
             if ima.packed_file:
@@ -664,7 +667,13 @@ class IMAGE_HT_header(Header):
             row.prop(tool_settings, "use_proportional_edit", icon_only=True)
             sub = row.row(align=True)
             sub.active = tool_settings.use_proportional_edit
-            sub.prop(tool_settings, "proportional_edit_falloff", icon_only=True)
+            sub.prop_with_popover(
+                tool_settings,
+                "proportional_edit_falloff",
+                text="",
+                icon_only=True,
+                panel="IMAGE_PT_proportional_edit",
+            )
 
     def draw(self, context):
         layout = self.layout
@@ -884,6 +893,23 @@ class IMAGE_PT_snapping(Panel):
         row.prop(tool_settings, "use_snap_translate", text="Move", toggle=True)
         row.prop(tool_settings, "use_snap_rotate", text="Rotate", toggle=True)
         row.prop(tool_settings, "use_snap_scale", text="Scale", toggle=True)
+
+
+class IMAGE_PT_proportional_edit(Panel):
+    bl_space_type = 'IMAGE_EDITOR'
+    bl_region_type = 'HEADER'
+    bl_label = "Proportional Editing"
+    bl_ui_units_x = 8
+
+    def draw(self, context):
+        layout = self.layout
+        tool_settings = context.tool_settings
+        col = layout.column()
+
+        col.prop(tool_settings, "use_proportional_connected")
+        col.separator()
+
+        col.prop(tool_settings, "proportional_edit_falloff", expand=True)
 
 
 class IMAGE_PT_image_properties(Panel):
@@ -1702,6 +1728,7 @@ classes = (
     IMAGE_PT_active_mask_spline,
     IMAGE_PT_active_mask_point,
     IMAGE_PT_snapping,
+    IMAGE_PT_proportional_edit,
     IMAGE_PT_image_properties,
     IMAGE_UL_render_slots,
     IMAGE_PT_render_slots,

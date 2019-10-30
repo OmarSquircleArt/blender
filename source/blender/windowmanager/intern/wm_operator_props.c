@@ -78,15 +78,6 @@ void WM_operator_properties_filesel(wmOperatorType *ot,
       {FILE_IMGDISPLAY, "THUMBNAIL", ICON_IMGDISPLAY, "Thumbnails", "Display files as thumbnails"},
       {0, NULL, 0, NULL, NULL},
   };
-  static const EnumPropertyItem file_action_types[] = {
-      {FILE_OPENFILE,
-       "OPENFILE",
-       0,
-       "Open",
-       "Use the file browser for opening files or a directory"},
-      {FILE_SAVE, "SAVE", 0, "Save", "Use the file browser for saving a file"},
-      {0, NULL, 0, NULL, NULL},
-  };
 
   if (flag & WM_FILESEL_FILEPATH) {
     RNA_def_string_file_path(ot->srna, "filepath", NULL, FILE_MAX, "File Path", "Path to file");
@@ -206,9 +197,6 @@ void WM_operator_properties_filesel(wmOperatorType *ot,
 
   prop = RNA_def_enum(
       ot->srna, "sort_method", rna_enum_file_sort_items, sort, "File sorting mode", "");
-  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
-
-  prop = RNA_def_enum(ot->srna, "action_type", file_action_types, action, "Action Type", "");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 }
 
@@ -406,6 +394,16 @@ void WM_operator_properties_select_operation_simple(wmOperatorType *ot)
   };
   PropertyRNA *prop = RNA_def_enum(ot->srna, "mode", select_mode_items, SEL_OP_SET, "Mode", "");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+}
+
+void WM_operator_properties_generic_select(wmOperatorType *ot)
+{
+  PropertyRNA *prop = RNA_def_boolean(
+      ot->srna, "wait_to_deselect_others", false, "Wait to Deselect Others", "");
+  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+
+  RNA_def_int(ot->srna, "mouse_x", 0, INT_MIN, INT_MAX, "Mouse X", "", INT_MIN, INT_MAX);
+  RNA_def_int(ot->srna, "mouse_y", 0, INT_MIN, INT_MAX, "Mouse Y", "", INT_MIN, INT_MAX);
 }
 
 void WM_operator_properties_gesture_box_zoom(wmOperatorType *ot)

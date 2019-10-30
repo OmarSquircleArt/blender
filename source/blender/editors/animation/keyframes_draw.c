@@ -45,7 +45,6 @@
 
 #include "BKE_fcurve.h"
 
-#include "GPU_draw.h"
 #include "GPU_immediate.h"
 #include "GPU_state.h"
 
@@ -546,8 +545,7 @@ int actkeyblock_get_valid_hold(ActKeyColumn *ac)
     return 0;
   }
 
-  const int hold_mask = (ACTKEYBLOCK_FLAG_ANY_HOLD | ACTKEYBLOCK_FLAG_STATIC_HOLD |
-                         ACTKEYBLOCK_FLAG_ANY_HOLD);
+  const int hold_mask = (ACTKEYBLOCK_FLAG_ANY_HOLD | ACTKEYBLOCK_FLAG_STATIC_HOLD);
   return (ac->block.flag & ~ac->block.conflict) & hold_mask;
 }
 

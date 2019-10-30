@@ -38,7 +38,6 @@ struct wmTimer;
 #include "DNA_image_types.h"
 #include "DNA_object_types.h"
 #include "DNA_movieclip_types.h"
-#include "DNA_gpu_types.h"
 
 typedef struct RegionView3D {
 
@@ -266,6 +265,8 @@ typedef struct View3D {
   unsigned short local_view_uuid;
   char _pad6[2];
   int layact DNA_DEPRECATED;
+  unsigned short local_collections_uuid;
+  short _pad7[3];
 
   /** Optional bool for 3d cursor to define center. */
   short ob_centre_cursor;
@@ -299,10 +300,6 @@ typedef struct View3D {
   /** Actually only used to define the opacity of the grease pencil vertex in edit mode. */
   float vertex_opacity;
 
-  /* note, 'fx_settings.dof' is currently _not_ allocated,
-   * instead set (temporarily) from camera */
-  struct GPUFXSettings fx_settings;
-
   /* XXX deprecated? */
   /** Grease-Pencil Data (annotation layers). */
   struct bGPdata *gpd DNA_DEPRECATED;
@@ -329,7 +326,7 @@ typedef struct View3D {
 #define V3D_S3D_DISPVOLUME (1 << 2)
 
 /** #View3D.flag */
-#define V3D_FLAG_UNUSED_0 (1 << 0) /* cleared */
+#define V3D_LOCAL_COLLECTIONS (1 << 0)
 #define V3D_FLAG_UNUSED_1 (1 << 1) /* cleared */
 #define V3D_HIDE_HELPLINES (1 << 2)
 #define V3D_INVALID_BACKBUF (1 << 3)
@@ -349,6 +346,7 @@ typedef struct View3D {
 #define RV3D_CLIPPING (1 << 2)
 #define RV3D_NAVIGATING (1 << 3)
 #define RV3D_GPULIGHT_UPDATE (1 << 4)
+#define RV3D_PAINTING (1 << 5)
 /*#define RV3D_IS_GAME_ENGINE       (1 << 5) */ /* UNUSED */
 /**
  * Disable zbuffer offset, skip calls to #ED_view3d_polygon_offset.

@@ -62,7 +62,6 @@
 #include "IMB_imbuf_types.h"
 
 #include "GPU_immediate.h"
-#include "GPU_draw.h"
 #include "GPU_matrix.h"
 #include "GPU_framebuffer.h"
 #include "GPU_state.h"
@@ -1395,7 +1394,7 @@ static int gpencil_fill_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSE
         tgpf->ar->type, gpencil_fill_draw_3d, tgpf, REGION_DRAW_POST_VIEW);
   }
 
-  WM_cursor_modal_set(CTX_wm_window(C), BC_PAINTBRUSHCURSOR);
+  WM_cursor_modal_set(CTX_wm_window(C), WM_CURSOR_PAINT_BRUSH);
 
   gpencil_fill_status_indicators(C, tgpf);
 

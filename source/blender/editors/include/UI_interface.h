@@ -524,6 +524,7 @@ bool UI_but_is_tool(const uiBut *but);
 bool UI_but_is_utf8(const uiBut *but);
 #define UI_but_is_decorator(but) ((but)->func == ui_but_anim_decorate_cb)
 
+bool UI_block_is_empty_ex(const uiBlock *block, const bool skip_title);
 bool UI_block_is_empty(const uiBlock *block);
 bool UI_block_can_add_separator(const uiBlock *block);
 
@@ -1810,6 +1811,7 @@ void uiLayoutSetActivateInit(uiLayout *layout, bool active);
 void uiLayoutSetEnabled(uiLayout *layout, bool enabled);
 void uiLayoutSetRedAlert(uiLayout *layout, bool redalert);
 void uiLayoutSetAlignment(uiLayout *layout, char alignment);
+void uiLayoutSetFixedSize(uiLayout *layout, bool fixed_size);
 void uiLayoutSetKeepAspect(uiLayout *layout, bool keepaspect);
 void uiLayoutSetScaleX(uiLayout *layout, float scale);
 void uiLayoutSetScaleY(uiLayout *layout, float scale);
@@ -1827,6 +1829,7 @@ bool uiLayoutGetActivateInit(uiLayout *layout);
 bool uiLayoutGetEnabled(uiLayout *layout);
 bool uiLayoutGetRedAlert(uiLayout *layout);
 int uiLayoutGetAlignment(uiLayout *layout);
+bool uiLayoutGetFixedSize(uiLayout *layout);
 bool uiLayoutGetKeepAspect(uiLayout *layout);
 int uiLayoutGetWidth(uiLayout *layout);
 float uiLayoutGetScaleX(uiLayout *layout);
@@ -2018,6 +2021,12 @@ void uiTemplateEditModeSelection(uiLayout *layout, struct bContext *C);
 void uiTemplateReportsBanner(uiLayout *layout, struct bContext *C);
 void uiTemplateInputStatus(uiLayout *layout, struct bContext *C);
 void uiTemplateKeymapItemProperties(uiLayout *layout, struct PointerRNA *ptr);
+
+bool uiTemplateEventFromKeymapItem(struct uiLayout *layout,
+                                   const char *text,
+                                   const struct wmKeyMapItem *kmi,
+                                   bool text_fallback);
+
 void uiTemplateComponentMenu(uiLayout *layout,
                              struct PointerRNA *ptr,
                              const char *propname,
@@ -2450,6 +2459,8 @@ void UI_widgetbase_draw_cache_end(void);
 /* Use for resetting the theme. */
 void UI_theme_init_default(void);
 void UI_style_init_default(void);
+
+void UI_interface_tag_script_reload(void);
 
 /* Special drawing for toolbar, mainly workarounds for inflexible icon sizing. */
 #define USE_UI_TOOLBAR_HACK

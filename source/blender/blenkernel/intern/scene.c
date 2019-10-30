@@ -318,6 +318,10 @@ void BKE_scene_copy_data(Main *bmain, Scene *sce_dst, const Scene *sce_src, cons
                                                             flag_subdata);
   }
 
+  if (sce_src->display.shading.prop) {
+    sce_dst->display.shading.prop = IDP_CopyProperty(sce_src->display.shading.prop);
+  }
+
   BKE_sound_reset_scene_runtime(sce_dst);
 
   /* Copy sequencer, this is local data! */
@@ -1004,19 +1008,19 @@ Object *BKE_scene_camera_switch_find(Scene *scene)
 }
 #endif
 
-int BKE_scene_camera_switch_update(Scene *scene)
+bool BKE_scene_camera_switch_update(Scene *scene)
 {
 #ifdef DURIAN_CAMERA_SWITCH
   Object *camera = BKE_scene_camera_switch_find(scene);
-  if (camera) {
+  if (camera && (camera != scene->camera)) {
     scene->camera = camera;
     DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
-    return 1;
+    return true;
   }
 #else
   (void)scene;
 #endif
-  return 0;
+  return false;
 }
 
 char *BKE_scene_find_marker_name(Scene *scene, int frame)
@@ -1072,15 +1076,18 @@ int BKE_scene_frame_snap_by_seconds(Scene *scene, double interval_in_seconds, in
   return (delta_prev < delta_next) ? second_prev : second_next;
 }
 
-void BKE_scene_remove_rigidbody_object(struct Main *bmain, Scene *scene, Object *ob)
+void BKE_scene_remove_rigidbody_object(struct Main *bmain,
+                                       Scene *scene,
+                                       Object *ob,
+                                       const bool free_us)
 {
   /* remove rigid body constraint from world before removing object */
   if (ob->rigidbody_constraint) {
-    BKE_rigidbody_remove_constraint(scene, ob);
+    BKE_rigidbody_remove_constraint(bmain, scene, ob, free_us);
   }
   /* remove rigid body object from world before removing object */
   if (ob->rigidbody_object) {
-    BKE_rigidbody_remove_object(bmain, scene, ob);
+    BKE_rigidbody_remove_object(bmain, scene, ob, free_us);
   }
 }
 
@@ -1670,6 +1677,8 @@ double BKE_scene_unit_scale(const UnitSettings *unit, const int unit_type, doubl
 
   switch (unit_type) {
     case B_UNIT_LENGTH:
+    case B_UNIT_VELOCITY:
+    case B_UNIT_ACCELERATION:
       return value * (double)unit->scale_length;
     case B_UNIT_AREA:
     case B_UNIT_POWER:

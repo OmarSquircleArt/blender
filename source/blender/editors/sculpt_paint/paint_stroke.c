@@ -43,7 +43,6 @@
 #include "BKE_curve.h"
 #include "BKE_colortools.h"
 #include "BKE_image.h"
-#include "BKE_mesh.h"
 
 #include "WM_api.h"
 #include "WM_types.h"
@@ -257,6 +256,7 @@ static bool paint_tool_require_inbetween_mouse_events(Brush *brush, ePaintMode m
                SCULPT_TOOL_GRAB,
                SCULPT_TOOL_ROTATE,
                SCULPT_TOOL_THUMB,
+               SCULPT_TOOL_SNAKE_HOOK,
                SCULPT_TOOL_ELASTIC_DEFORM,
                SCULPT_TOOL_POSE)) {
         return false;
@@ -669,7 +669,7 @@ static float paint_space_stroke_spacing(bContext *C,
     return max_ff(0.001f, size_clamp * spacing / 50.f);
   }
   else {
-    return max_ff(1.0, size_clamp * spacing / 50.0f);
+    return max_ff(stroke->zoom_2d, size_clamp * spacing / 50.0f);
   }
 }
 
@@ -775,17 +775,19 @@ static int paint_space_stroke(bContext *C,
   Brush *brush = BKE_paint_brush(paint);
   int cnt = 0;
 
-  float pressure, dpressure;
-  float mouse[2], dmouse[2];
-  float world_space_position[3], d_world_space_position[3], final_world_space_position[3];
-  float length;
-  float no_pressure_spacing = paint_space_stroke_spacing(C, scene, stroke, 1.0f, 1.0f);
-  pressure = stroke->last_pressure;
-  dpressure = final_pressure - stroke->last_pressure;
-  sub_v2_v2v2(dmouse, final_mouse, stroke->last_mouse_position);
-  length = normalize_v2(dmouse);
+  const bool use_scene_spacing = paint_stroke_use_scene_spacing(brush, mode);
+  float d_world_space_position[3] = {0.0f};
 
-  if (paint_stroke_use_scene_spacing(brush, mode)) {
+  float no_pressure_spacing = paint_space_stroke_spacing(C, scene, stroke, 1.0f, 1.0f);
+  float pressure = stroke->last_pressure;
+  float dpressure = final_pressure - stroke->last_pressure;
+
+  float dmouse[2];
+  sub_v2_v2v2(dmouse, final_mouse, stroke->last_mouse_position);
+  float length = normalize_v2(dmouse);
+
+  if (use_scene_spacing) {
+    float world_space_position[3];
     bool hit = sculpt_stroke_get_location(C, world_space_position, final_mouse);
     mul_m4_v3(stroke->vc.obact->obmat, world_space_position);
     if (hit && stroke->stroke_over_mesh) {
@@ -795,6 +797,7 @@ static int paint_space_stroke(bContext *C,
     }
     else {
       length = 0.0f;
+      zero_v3(d_world_space_position);
       stroke->stroke_over_mesh = hit;
       if (stroke->stroke_over_mesh) {
         copy_v3_v3(stroke->last_world_space_position, world_space_position);
@@ -805,9 +808,11 @@ static int paint_space_stroke(bContext *C,
   while (length > 0.0f) {
     float spacing = paint_space_stroke_spacing_variable(
         C, scene, stroke, pressure, dpressure, length);
+    float mouse[3];
 
     if (length >= spacing) {
-      if (paint_stroke_use_scene_spacing(brush, mode)) {
+      if (use_scene_spacing) {
+        float final_world_space_position[3];
         normalize_v3(d_world_space_position);
         mul_v3_v3fl(final_world_space_position, d_world_space_position, spacing);
         add_v3_v3v3(final_world_space_position,
@@ -852,14 +857,16 @@ PaintStroke *paint_stroke_new(bContext *C,
                               StrokeDone done,
                               int event_type)
 {
+  struct Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   PaintStroke *stroke = MEM_callocN(sizeof(PaintStroke), "PaintStroke");
   ToolSettings *toolsettings = CTX_data_tool_settings(C);
   UnifiedPaintSettings *ups = &toolsettings->unified_paint_settings;
   Paint *p = BKE_paint_get_active_from_context(C);
   Brush *br = stroke->brush = BKE_paint_brush(p);
+  RegionView3D *rv3d = CTX_wm_region_view3d(C);
   float zoomx, zoomy;
 
-  ED_view3d_viewcontext_init(C, &stroke->vc);
+  ED_view3d_viewcontext_init(C, &stroke->vc, depsgraph);
 
   stroke->get_location = get_location;
   stroke->test_start = test_start;
@@ -882,6 +889,10 @@ PaintStroke *paint_stroke_new(bContext *C,
   ups->overlap_factor = 1.0;
   ups->stroke_active = true;
 
+  if (rv3d) {
+    rv3d->rflag |= RV3D_PAINTING;
+  }
+
   zero_v3(ups->average_stroke_accum);
   ups->average_stroke_counter = 0;
 
@@ -896,19 +907,45 @@ PaintStroke *paint_stroke_new(bContext *C,
   return stroke;
 }
 
-void paint_stroke_data_free(struct wmOperator *op)
+void paint_stroke_free(bContext *C, wmOperator *op)
 {
+  RegionView3D *rv3d = CTX_wm_region_view3d(C);
+  if (rv3d) {
+    rv3d->rflag &= ~RV3D_PAINTING;
+  }
+
   BKE_paint_set_overlay_override(0);
+
+  PaintStroke *stroke = op->customdata;
+  if (stroke == NULL) {
+    return;
+  }
+
+  UnifiedPaintSettings *ups = stroke->ups;
+  ups->draw_anchored = false;
+  ups->stroke_active = false;
+
+  if (stroke->timer) {
+    WM_event_remove_timer(CTX_wm_manager(C), CTX_wm_window(C), stroke->timer);
+  }
+
+  if (stroke->rng) {
+    BLI_rng_free(stroke->rng);
+  }
+
+  if (stroke->stroke_cursor) {
+    WM_paint_cursor_end(CTX_wm_manager(C), stroke->stroke_cursor);
+  }
+
+  BLI_freelistN(&stroke->line);
+
   MEM_SAFE_FREE(op->customdata);
 }
 
-static void stroke_done(struct bContext *C, struct wmOperator *op)
+static void stroke_done(bContext *C, wmOperator *op)
 {
-  struct PaintStroke *stroke = op->customdata;
+  PaintStroke *stroke = op->customdata;
   UnifiedPaintSettings *ups = stroke->ups;
-
-  ups->draw_anchored = false;
-  ups->stroke_active = false;
 
   /* reset rotation here to avoid doing so in cursor display */
   if (!(stroke->brush->mtex.brush_angle_mode & MTEX_ANGLE_RAKE)) {
@@ -929,21 +966,7 @@ static void stroke_done(struct bContext *C, struct wmOperator *op)
     }
   }
 
-  if (stroke->timer) {
-    WM_event_remove_timer(CTX_wm_manager(C), CTX_wm_window(C), stroke->timer);
-  }
-
-  if (stroke->rng) {
-    BLI_rng_free(stroke->rng);
-  }
-
-  if (stroke->stroke_cursor) {
-    WM_paint_cursor_end(CTX_wm_manager(C), stroke->stroke_cursor);
-  }
-
-  BLI_freelistN(&stroke->line);
-
-  paint_stroke_data_free(op);
+  paint_stroke_free(C, op);
 }
 
 /* Returns zero if the stroke dots should not be spaced, non-zero otherwise */
@@ -957,6 +980,7 @@ static bool sculpt_is_grab_tool(Brush *br)
   return ELEM(br->sculpt_tool,
               SCULPT_TOOL_GRAB,
               SCULPT_TOOL_ELASTIC_DEFORM,
+              SCULPT_TOOL_POSE,
               SCULPT_TOOL_THUMB,
               SCULPT_TOOL_ROTATE,
               SCULPT_TOOL_SNAKE_HOOK);

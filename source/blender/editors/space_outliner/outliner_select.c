@@ -263,7 +263,8 @@ static void do_outliner_object_select_recursive(ViewLayer *view_layer,
 
   for (base = FIRSTBASE(view_layer); base; base = base->next) {
     Object *ob = base->object;
-    if ((((base->flag & BASE_VISIBLE) != 0) && BKE_object_is_child_recursive(ob_parent, ob))) {
+    if ((((base->flag & BASE_VISIBLE_DEPSGRAPH) != 0) &&
+         BKE_object_is_child_recursive(ob_parent, ob))) {
       ED_object_base_select(base, select ? BA_SELECT : BA_DESELECT);
     }
   }
@@ -609,8 +610,8 @@ static eOLDrawState tree_element_active_posechannel(bContext *C,
       if (set != OL_SETSEL_EXTEND) {
         /* Single select forces all other bones to get unselected. */
         uint objects_len = 0;
-        Object **objects = BKE_view_layer_array_from_objects_in_mode_unique_data(
-            view_layer, NULL, &objects_len, OB_MODE_POSE);
+        Object **objects = BKE_object_pose_array_get_unique(view_layer, NULL, &objects_len);
+
         for (uint object_index = 0; object_index < objects_len; object_index++) {
           Object *ob_iter = BKE_object_pose_armature_get(objects[object_index]);
 
@@ -1198,7 +1199,7 @@ static void do_outliner_item_activate_tree_element(bContext *C,
       Object *ob = (Object *)outliner_search_back(soops, te, ID_OB);
       if ((ob != NULL) && (ob->data == tselem->id)) {
         Base *base = BKE_view_layer_base_find(view_layer, ob);
-        if ((base != NULL) && (base->flag & BASE_VISIBLE)) {
+        if ((base != NULL) && (base->flag & BASE_VISIBLE_DEPSGRAPH)) {
           do_outliner_activate_obdata(C, scene, view_layer, base, extend);
         }
       }

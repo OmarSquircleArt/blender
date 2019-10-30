@@ -114,7 +114,8 @@ class PREFERENCES_OT_copy_prev(Operator):
 
         shutil.copytree(self._old_path(), self._new_path(), symlinks=True)
 
-        # reload recent-files.txt
+        # reload preferences and recent-files.txt
+        bpy.ops.wm.read_userpref()
         bpy.ops.wm.read_history()
 
         # don't loose users work if they open the splash later.
@@ -537,7 +538,7 @@ class PREFERENCES_OT_addon_refresh(Operator):
 class PREFERENCES_OT_addon_install(Operator):
     """Install an add-on"""
     bl_idname = "preferences.addon_install"
-    bl_label = "Install"
+    bl_label = "Install Add-on"
 
     overwrite: BoolProperty(
         name="Overwrite",

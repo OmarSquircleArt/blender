@@ -57,7 +57,6 @@
 #include "DNA_text_types.h"
 #include "DNA_world_types.h"
 
-#include "BKE_action.h"
 #include "BKE_animsys.h"
 #include "BKE_cloth.h"
 #include "BKE_collection.h"
@@ -66,22 +65,17 @@
 #include "BKE_customdata.h"
 #include "BKE_fcurve.h"
 #include "BKE_freestyle.h"
-#include "BKE_gpencil.h"
 #include "BKE_idprop.h"
-#include "BKE_image.h"
 #include "BKE_key.h"
 #include "BKE_library.h"
 #include "BKE_layer.h"
 #include "BKE_main.h"
-#include "BKE_material.h"
 #include "BKE_mesh.h"
 #include "BKE_node.h"
-#include "BKE_object.h"
 #include "BKE_paint.h"
 #include "BKE_pointcache.h"
 #include "BKE_report.h"
 #include "BKE_rigidbody.h"
-#include "BKE_scene.h"
 #include "BKE_screen.h"
 #include "BKE_sequencer.h"
 #include "BKE_studiolight.h"
@@ -591,13 +585,18 @@ static void do_versions_fix_annotations(bGPdata *gpd)
   }
 }
 
-static void do_versions_remove_region(ListBase *regionbase, int regiontype)
+static void do_versions_remove_region(ListBase *regionbase, ARegion *ar)
+{
+  BLI_freelinkN(regionbase, ar);
+}
+
+static void do_versions_remove_regions_by_type(ListBase *regionbase, int regiontype)
 {
   ARegion *ar, *ar_next;
   for (ar = regionbase->first; ar; ar = ar_next) {
     ar_next = ar->next;
     if (ar->regiontype == regiontype) {
-      BLI_freelinkN(regionbase, ar);
+      do_versions_remove_region(regionbase, ar);
     }
   }
 }
@@ -846,6 +845,14 @@ static void do_versions_material_convert_legacy_blend_mode(bNodeTree *ntree, cha
 
   if (need_update) {
     ntreeUpdateTree(NULL, ntree);
+  }
+}
+
+static void do_versions_local_collection_bits_set(LayerCollection *layer_collection)
+{
+  layer_collection->local_collections_bits = ~(0);
+  LISTBASE_FOREACH (LayerCollection *, child, &layer_collection->layer_collections) {
+    do_versions_local_collection_bits_set(child);
   }
 }
 
@@ -1263,6 +1270,22 @@ void do_versions_after_linking_280(Main *bmain, ReportList *UNUSED(reports))
           do_versions_material_convert_legacy_blend_mode(ntree, 2 /* MA_BM_MULTIPLY */);
         }
         ma->blend_method = MA_BM_BLEND;
+      }
+    }
+
+    {
+      /* Update all ruler layers to set new flag. */
+      LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+        bGPdata *gpd = scene->gpd;
+        if (gpd == NULL) {
+          continue;
+        }
+        for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
+          if (STREQ(gpl->info, "RulerData3D")) {
+            gpl->flag |= GP_LAYER_IS_RULER;
+            break;
+          }
+        }
       }
     }
   }
@@ -2919,7 +2942,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
             }
             case SPACE_VIEW3D: {
               View3D *v3d = (View3D *)sl;
-              v3d->flag &= ~(V3D_FLAG_UNUSED_0 | V3D_FLAG_UNUSED_1 | V3D_FLAG_UNUSED_10 |
+              v3d->flag &= ~(V3D_LOCAL_COLLECTIONS | V3D_FLAG_UNUSED_1 | V3D_FLAG_UNUSED_10 |
                              V3D_FLAG_UNUSED_12);
               v3d->flag2 &= ~(V3D_FLAG2_UNUSED_3 | V3D_FLAG2_UNUSED_6 | V3D_FLAG2_UNUSED_12 |
                               V3D_FLAG2_UNUSED_13 | V3D_FLAG2_UNUSED_14 | V3D_FLAG2_UNUSED_15);
@@ -3338,7 +3361,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
             ListBase *regionbase = (sl == sa->spacedata.first) ? &sa->regionbase : &sl->regionbase;
 
             /* Remove multiple footers that were added by mistake. */
-            do_versions_remove_region(regionbase, RGN_TYPE_FOOTER);
+            do_versions_remove_regions_by_type(regionbase, RGN_TYPE_FOOTER);
 
             /* Add footer. */
             ARegion *ar = do_versions_add_region(RGN_TYPE_FOOTER, "footer for text");
@@ -3777,7 +3800,6 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
             ARegion *ar_header = do_versions_find_region(regionbase, RGN_TYPE_HEADER);
             ARegion *ar_toolprops = do_versions_find_region_or_null(regionbase,
                                                                     RGN_TYPE_TOOL_PROPS);
-            ARegion *ar_execute = do_versions_find_region_or_null(regionbase, RGN_TYPE_EXECUTE);
 
             /* Reinsert UI region so that it spawns entire area width */
             BLI_remlink(regionbase, ar_ui);
@@ -3792,15 +3814,6 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
               BLI_assert(sfile->op == NULL);
               BKE_area_region_free(stype, ar_toolprops);
               BLI_freelinkN(regionbase, ar_toolprops);
-            }
-
-            if (!ar_execute) {
-              ARegion *ar_main = do_versions_find_region(regionbase, RGN_TYPE_WINDOW);
-              ar_execute = MEM_callocN(sizeof(ARegion), "versioning execute region for file");
-              BLI_insertlinkbefore(regionbase, ar_main, ar_execute);
-              ar_execute->regiontype = RGN_TYPE_EXECUTE;
-              ar_execute->alignment = RGN_ALIGN_BOTTOM;
-              ar_execute->flag |= RGN_FLAG_DYNAMIC_SIZE;
             }
 
             if (sfile->params) {
@@ -3848,6 +3861,71 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     for (Brush *br = bmain->brushes.first; br; br = br->id.next) {
       if (br->ob_mode & OB_MODE_SCULPT && br->elastic_deform_volume_preservation == 0.0f) {
         br->elastic_deform_volume_preservation = 0.5f;
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 281, 15)) {
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      if (scene->toolsettings->snap_node_mode == SCE_SNAP_MODE_NODE_X) {
+        scene->toolsettings->snap_node_mode = SCE_SNAP_MODE_GRID;
+      }
+    }
+
+    if (!DNA_struct_elem_find(
+            fd->filesdna, "LayerCollection", "short", "local_collections_bits")) {
+      LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+        LISTBASE_FOREACH (ViewLayer *, view_layer, &scene->view_layers) {
+          LISTBASE_FOREACH (LayerCollection *, layer_collection, &view_layer->layer_collections) {
+            do_versions_local_collection_bits_set(layer_collection);
+          }
+        }
+      }
+    }
+
+    /* Fix wrong 3D viewport copying causing corrupt pointers (T69974). */
+    for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
+      for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
+        for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+          if (sl->spacetype == SPACE_VIEW3D) {
+            View3D *v3d = (View3D *)sl;
+
+            for (ScrArea *sa_other = screen->areabase.first; sa_other; sa_other = sa_other->next) {
+              for (SpaceLink *sl_other = sa_other->spacedata.first; sl_other;
+                   sl_other = sl_other->next) {
+                if (sl != sl_other && sl_other->spacetype == SPACE_VIEW3D) {
+                  View3D *v3d_other = (View3D *)sl_other;
+
+                  if (v3d->shading.prop == v3d_other->shading.prop) {
+                    v3d_other->shading.prop = NULL;
+                  }
+                }
+              }
+            }
+          }
+          else if (sl->spacetype == SPACE_FILE) {
+            ListBase *regionbase = (sl == sa->spacedata.first) ? &sa->regionbase : &sl->regionbase;
+            ARegion *ar_tools = do_versions_find_region_or_null(regionbase, RGN_TYPE_TOOLS);
+            ARegion *ar_header = do_versions_find_region(regionbase, RGN_TYPE_HEADER);
+
+            if (ar_tools) {
+              ARegion *ar_next = ar_tools->next;
+
+              /* We temporarily had two tools regions, get rid of the second one. */
+              if (ar_next && ar_next->regiontype == RGN_TYPE_TOOLS) {
+                do_versions_remove_region(regionbase, ar_next);
+              }
+
+              BLI_remlink(regionbase, ar_tools);
+              BLI_insertlinkafter(regionbase, ar_header, ar_tools);
+            }
+            else {
+              ar_tools = do_versions_add_region(RGN_TYPE_TOOLS, "versioning file tools region");
+              BLI_insertlinkafter(regionbase, ar_header, ar_tools);
+              ar_tools->alignment = RGN_ALIGN_LEFT;
+            }
+          }
+        }
       }
     }
   }

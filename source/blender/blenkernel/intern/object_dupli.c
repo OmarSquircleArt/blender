@@ -93,8 +93,11 @@ typedef struct DupliGenerator {
 static const DupliGenerator *get_dupli_generator(const DupliContext *ctx);
 
 /* create initial context for root object */
-static void init_context(
-    DupliContext *r_ctx, Depsgraph *depsgraph, Scene *scene, Object *ob, float space_mat[4][4])
+static void init_context(DupliContext *r_ctx,
+                         Depsgraph *depsgraph,
+                         Scene *scene,
+                         Object *ob,
+                         const float space_mat[4][4])
 {
   r_ctx->depsgraph = depsgraph;
   r_ctx->scene = scene;
@@ -118,7 +121,7 @@ static void init_context(
 
 /* create sub-context for recursive duplis */
 static void copy_dupli_context(
-    DupliContext *r_ctx, const DupliContext *ctx, Object *ob, float mat[4][4], int index)
+    DupliContext *r_ctx, const DupliContext *ctx, Object *ob, const float mat[4][4], int index)
 {
   *r_ctx = *ctx;
 
@@ -204,7 +207,7 @@ static DupliObject *make_dupli(const DupliContext *ctx, Object *ob, float mat[4]
  */
 static void make_recursive_duplis(const DupliContext *ctx,
                                   Object *ob,
-                                  float space_mat[4][4],
+                                  const float space_mat[4][4],
                                   int index)
 {
   /* simple preventing of too deep nested collections with MAX_DUPLI_RECUR */
@@ -398,12 +401,8 @@ static void make_child_duplis_verts(const DupliContext *ctx, void *userdata, Obj
   mul_m4_m4m4(vdd->child_imat, child->imat, ctx->object->obmat);
 
   const MVert *mvert = me_eval->mvert;
-  const int *origindex = CustomData_get_layer(&me_eval->vdata, CD_ORIGINDEX);
-
-  for (int i = 0, j = 0; i < me_eval->totvert; i++) {
-    if (origindex == NULL || origindex[i] != ORIGINDEX_NONE) {
-      vertex_dupli(vdd, j++, mvert[i].co, mvert[i].no);
-    }
+  for (int i = 0; i < me_eval->totvert; i++) {
+    vertex_dupli(vdd, i, mvert[i].co, mvert[i].no);
   }
 }
 

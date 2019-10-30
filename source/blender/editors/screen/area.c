@@ -30,6 +30,7 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_math.h"
+#include "BLI_rand.h"
 #include "BLI_utildefines.h"
 #include "BLI_linklist_stack.h"
 
@@ -55,13 +56,11 @@
 #include "GPU_immediate.h"
 #include "GPU_immediate_util.h"
 #include "GPU_matrix.h"
-#include "GPU_draw.h"
 #include "GPU_state.h"
 #include "GPU_framebuffer.h"
 
 #include "BLF_api.h"
 
-#include "IMB_imbuf.h"
 #include "IMB_imbuf_types.h"
 #include "IMB_metadata.h"
 
@@ -544,20 +543,20 @@ void ED_region_do_draw(bContext *C, ARegion *ar)
   region_draw_azones(sa, ar);
 
   /* for debugging unneeded area redraws and partial redraw */
-#if 0
-  GPU_blend(true);
-  GPUVertFormat *format = immVertexFormat();
-  uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
-  immBindBuiltinProgram(GPU_SHADER_2D_UNIFORM_COLOR);
-  immUniformColor4f(drand48(), drand48(), drand48(), 0.1f);
-  immRectf(pos,
-           ar->drawrct.xmin - ar->winrct.xmin,
-           ar->drawrct.ymin - ar->winrct.ymin,
-           ar->drawrct.xmax - ar->winrct.xmin,
-           ar->drawrct.ymax - ar->winrct.ymin);
-  immUnbindProgram();
-  GPU_blend(false);
-#endif
+  if (G.debug_value == 888) {
+    GPU_blend(true);
+    GPUVertFormat *format = immVertexFormat();
+    uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+    immBindBuiltinProgram(GPU_SHADER_2D_UNIFORM_COLOR);
+    immUniformColor4f(BLI_thread_frand(0), BLI_thread_frand(0), BLI_thread_frand(0), 0.1f);
+    immRectf(pos,
+             ar->drawrct.xmin - ar->winrct.xmin,
+             ar->drawrct.ymin - ar->winrct.ymin,
+             ar->drawrct.xmax - ar->winrct.xmin,
+             ar->drawrct.ymax - ar->winrct.ymin);
+    immUnbindProgram();
+    GPU_blend(false);
+  }
 
   memset(&ar->drawrct, 0, sizeof(ar->drawrct));
 
@@ -813,7 +812,7 @@ static void area_azone_initialize(wmWindow *win, const bScreen *screen, ScrArea 
     return;
   }
 
-  float coords[4][4] = {
+  const float coords[4][4] = {
       /* Bottom-left. */
       {sa->totrct.xmin - U.pixelsize,
        sa->totrct.ymin - U.pixelsize,
@@ -1828,7 +1827,7 @@ void ED_region_cursor_set(wmWindow *win, ScrArea *sa, ARegion *ar)
     if (WM_cursor_set_from_tool(win, sa, ar)) {
       return;
     }
-    WM_cursor_set(win, CURSOR_STD);
+    WM_cursor_set(win, WM_CURSOR_DEFAULT);
   }
 }
 
@@ -2435,7 +2434,7 @@ void ED_region_panels_layout_ex(const bContext *C,
      * instead they calculate offsets for the next panel to start drawing. */
     Panel *panel = ar->panels.last;
     if (panel != NULL) {
-      int size_dyn[2] = {
+      const int size_dyn[2] = {
           UI_UNIT_X * ((panel->flag & PNL_CLOSED) ? 8 : 14) / UI_DPI_FAC,
           UI_panel_size_y(panel) / UI_DPI_FAC,
       };
@@ -2870,7 +2869,7 @@ void ED_region_info_draw(ARegion *ar,
                          float fill_color[4],
                          const bool full_redraw)
 {
-  ED_region_info_draw_multiline(ar, (const char * [2]){text, NULL}, fill_color, full_redraw);
+  ED_region_info_draw_multiline(ar, (const char *[2]){text, NULL}, fill_color, full_redraw);
 }
 
 #define MAX_METADATA_STR 1024
@@ -3338,13 +3337,17 @@ const rcti *ED_region_visible_rect(ARegion *ar)
 
 /* Cache display helpers */
 
-void ED_region_cache_draw_background(const ARegion *ar)
+void ED_region_cache_draw_background(ARegion *ar)
 {
+  /* Local coordinate visible rect inside region, to accommodate overlapping ui. */
+  const rcti *rect_visible = ED_region_visible_rect(ar);
+  const int region_bottom = rect_visible->ymin;
+
   uint pos = GPU_vertformat_attr_add(
       immVertexFormat(), "pos", GPU_COMP_I32, 2, GPU_FETCH_INT_TO_FLOAT);
   immBindBuiltinProgram(GPU_SHADER_2D_UNIFORM_COLOR);
   immUniformColor4ub(128, 128, 255, 64);
-  immRecti(pos, 0, 0, ar->winx, 8 * UI_DPI_FAC);
+  immRecti(pos, 0, region_bottom, ar->winx, region_bottom + 8 * UI_DPI_FAC);
   immUnbindProgram();
 }
 
@@ -3374,9 +3377,13 @@ void ED_region_cache_draw_curfra_label(const int framenr, const float x, const f
 }
 
 void ED_region_cache_draw_cached_segments(
-    const ARegion *ar, const int num_segments, const int *points, const int sfra, const int efra)
+    ARegion *ar, const int num_segments, const int *points, const int sfra, const int efra)
 {
   if (num_segments) {
+    /* Local coordinate visible rect inside region, to accommodate overlapping ui. */
+    const rcti *rect_visible = ED_region_visible_rect(ar);
+    const int region_bottom = rect_visible->ymin;
+
     uint pos = GPU_vertformat_attr_add(
         immVertexFormat(), "pos", GPU_COMP_I32, 2, GPU_FETCH_INT_TO_FLOAT);
     immBindBuiltinProgram(GPU_SHADER_2D_UNIFORM_COLOR);
@@ -3386,7 +3393,7 @@ void ED_region_cache_draw_cached_segments(
       float x1 = (float)(points[a * 2] - sfra) / (efra - sfra + 1) * ar->winx;
       float x2 = (float)(points[a * 2 + 1] - sfra + 1) / (efra - sfra + 1) * ar->winx;
 
-      immRecti(pos, x1, 0, x2, 8 * UI_DPI_FAC);
+      immRecti(pos, x1, region_bottom, x2, region_bottom + 8 * UI_DPI_FAC);
       /* TODO(merwin): use primitive restart to draw multiple rects more efficiently */
     }
 

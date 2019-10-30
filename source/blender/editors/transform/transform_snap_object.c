@@ -47,6 +47,7 @@
 #include "BKE_object.h"
 #include "BKE_anim.h" /* for duplis */
 #include "BKE_editmesh.h"
+#include "BKE_layer.h"
 #include "BKE_main.h"
 #include "BKE_tracking.h"
 #include "BKE_context.h"
@@ -354,7 +355,7 @@ static bool raycastMesh(SnapObjectContext *sctx,
                         const float ray_dir[3],
                         Object *ob,
                         Mesh *me,
-                        float obmat[4][4],
+                        const float obmat[4][4],
                         const unsigned int ob_index,
                         bool use_hide,
                         /* read/write args */
@@ -527,7 +528,7 @@ static bool raycastEditMesh(SnapObjectContext *sctx,
                             const float ray_dir[3],
                             Object *ob,
                             BMEditMesh *em,
-                            float obmat[4][4],
+                            const float obmat[4][4],
                             const unsigned int ob_index,
                             /* read/write args */
                             float *ray_depth,
@@ -710,7 +711,7 @@ static bool raycastObj(SnapObjectContext *sctx,
                        const float ray_start[3],
                        const float ray_dir[3],
                        Object *ob,
-                       float obmat[4][4],
+                       const float obmat[4][4],
                        const unsigned int ob_index,
                        bool use_obedit,
                        bool use_occlusion_test,
@@ -923,10 +924,10 @@ static bool raycastObjects(SnapObjectContext *sctx,
 
 /* Test BoundBox */
 static bool snap_bound_box_check_dist(float min[3],
-                                      float max[3],
-                                      float lpmat[4][4],
-                                      float win_size[2],
-                                      float mval[2],
+                                      const float max[3],
+                                      const float lpmat[4][4],
+                                      const float win_size[2],
+                                      const float mval[2],
                                       float dist_px_sq)
 {
   /* In vertex and edges you need to get the pixel distance from ray to BoundBox,
@@ -1220,7 +1221,7 @@ static void cb_snap_tri_verts(void *userdata,
 static short snap_mesh_polygon(SnapObjectContext *sctx,
                                SnapData *snapdata,
                                Object *ob,
-                               float obmat[4][4],
+                               const float obmat[4][4],
                                /* read/write args */
                                float *dist_px,
                                /* return args */
@@ -1362,7 +1363,7 @@ static short snap_mesh_polygon(SnapObjectContext *sctx,
 static short snap_mesh_edge_verts_mixed(SnapObjectContext *sctx,
                                         SnapData *snapdata,
                                         Object *ob,
-                                        float obmat[4][4],
+                                        const float obmat[4][4],
                                         float original_dist_px,
                                         const float prev_co[3],
                                         /* read/write args */
@@ -1542,7 +1543,7 @@ static short snap_mesh_edge_verts_mixed(SnapObjectContext *sctx,
 
 static short snapArmature(SnapData *snapdata,
                           Object *ob,
-                          float obmat[4][4],
+                          const float obmat[4][4],
                           bool use_obedit,
                           /* read/write args */
                           float *dist_px,
@@ -1687,7 +1688,7 @@ static short snapArmature(SnapData *snapdata,
 
 static short snapCurve(SnapData *snapdata,
                        Object *ob,
-                       float obmat[4][4],
+                       const float obmat[4][4],
                        bool use_obedit,
                        /* read/write args */
                        float *dist_px,
@@ -1717,7 +1718,7 @@ static short snapCurve(SnapData *snapdata,
 
   if (use_obedit == false) {
     /* Test BoundBox */
-    BoundBox *bb = BKE_curve_texspace_get(cu, NULL, NULL, NULL);
+    BoundBox *bb = BKE_curve_boundbox_get(ob);
     if (bb && !snap_bound_box_check_dist(
                   bb->vec[0], bb->vec[6], lpmat, snapdata->win_size, snapdata->mval, dist_px_sq)) {
       return 0;
@@ -1838,7 +1839,7 @@ static short snapCurve(SnapData *snapdata,
 /* may extend later (for now just snaps to empty center) */
 static short snapEmpty(SnapData *snapdata,
                        Object *ob,
-                       float obmat[4][4],
+                       const float obmat[4][4],
                        /* read/write args */
                        float *dist_px,
                        /* return args */
@@ -1993,7 +1994,7 @@ static short snapMesh(SnapObjectContext *sctx,
                       SnapData *snapdata,
                       Object *ob,
                       Mesh *me,
-                      float obmat[4][4],
+                      const float obmat[4][4],
                       /* read/write args */
                       float *dist_px,
                       /* return args */
@@ -2231,7 +2232,7 @@ static short snapEditMesh(SnapObjectContext *sctx,
                           SnapData *snapdata,
                           Object *ob,
                           BMEditMesh *em,
-                          float obmat[4][4],
+                          const float obmat[4][4],
                           /* read/write args */
                           float *dist_px,
                           /* return args */
@@ -2367,6 +2368,7 @@ static short snapEditMesh(SnapObjectContext *sctx,
 
   if (treedata_vert && (snapdata->snap_to_flag & SCE_SNAP_MODE_VERTEX)) {
     BM_mesh_elem_table_ensure(em->bm, BM_VERT);
+    BM_mesh_elem_index_ensure(em->bm, BM_VERT);
     BLI_bvhtree_find_nearest_projected(treedata_vert->tree,
                                        lpmat,
                                        snapdata->win_size,
@@ -2382,6 +2384,7 @@ static short snapEditMesh(SnapObjectContext *sctx,
     int last_index = nearest.index;
     nearest.index = -1;
     BM_mesh_elem_table_ensure(em->bm, BM_EDGE | BM_VERT);
+    BM_mesh_elem_index_ensure(em->bm, BM_EDGE | BM_VERT);
     BLI_bvhtree_find_nearest_projected(treedata_edge->tree,
                                        lpmat,
                                        snapdata->win_size,
