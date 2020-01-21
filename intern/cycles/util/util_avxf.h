@@ -140,6 +140,11 @@ __forceinline void dot3(const avxf &a, const avxf &b, float &den, float &den2)
 /// Unary Operators
 ////////////////////////////////////////////////////////////////////////////////
 
+__forceinline const avxf cast(const __m256i &a)
+{
+  return _mm256_castsi256_ps(a);
+}
+
 __forceinline const avxf mm256_sqrt(const avxf &a)
 {
   return _mm256_sqrt_ps(a.m256);
@@ -259,6 +264,24 @@ template<size_t i0> __forceinline const avxf shuffle(const avxf &a)
   return shuffle<i0>(a, a);
 }
 
+template<size_t i> __forceinline float extract(const avxf &a)
+{
+  return _mm256_cvtss_f32(shuffle<i, i, i, i>(a));
+}
+template<> __forceinline float extract<0>(const avxf &a)
+{
+  return _mm256_cvtss_f32(a);
+}
+
+__forceinline ssef low(const avxf &a)
+{
+  return _mm256_extractf128_ps(a, 0);
+}
+__forceinline ssef high(const avxf &a)
+{
+  return _mm256_extractf128_ps(a, 1);
+}
+
 template<int i0, int i1, int i2, int i3, int i4, int i5, int i6, int i7>
 __forceinline const avxf permute(const avxf &a)
 {
@@ -334,11 +357,25 @@ __forceinline const avxf msub(const avxf &a, const avxf &b, const avxf &c)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// Comparison Operators
+/// Comparison Operators + Select
 ////////////////////////////////////////////////////////////////////////////////
 __forceinline const avxb operator<=(const avxf &a, const avxf &b)
 {
   return _mm256_cmp_ps(a.m256, b.m256, _CMP_LE_OS);
+}
+
+__forceinline const avxf select(const avxb &m, const avxf &t, const avxf &f)
+{
+  return _mm256_blendv_ps(f, t, m);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// Common Functions
+////////////////////////////////////////////////////////////////////////////////
+
+__forceinline avxf mix(const avxf &a, const avxf &b, const avxf &t)
+{
+  return madd(t, b, (avxf(1.0f) - t) * a);
 }
 
 #endif

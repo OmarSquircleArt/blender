@@ -153,6 +153,7 @@ CCL_NAMESPACE_END
 #  if defined(__KERNEL_AVX__) || defined(__KERNEL_AVX2__)
 #    include "util/util_avxb.h"
 #    include "util/util_avxf.h"
+#    include "util/util_avxi.h"
 #  endif
 #endif
 
