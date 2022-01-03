@@ -77,6 +77,14 @@ char *ShaderModule::pass_shader_code_frag_get(const GPUCodegenOutput *codegen,
   return DRW_shader_library_create_shader_string(shader_lib_, output.c_str());
 }
 
+char *ShaderModule::pass_shader_code_defs_get()
+{
+  std::string defines = "";
+  defines += "#define COMPOSITOR_SHADER\n";
+
+  return BLI_strdup(defines.c_str());
+}
+
 /* WATCH: This can be called from another thread! Needs to not touch the shader module in any
  * thread unsafe manner. */
 GPUShaderSource ShaderModule::pass_shader_code_generate(const GPUCodegenOutput *codegen,
@@ -86,7 +94,7 @@ GPUShaderSource ShaderModule::pass_shader_code_generate(const GPUCodegenOutput *
   source.vertex = pass_shader_code_vert_get(codegen, gpumat);
   source.fragment = pass_shader_code_frag_get(codegen, gpumat);
   source.geometry = nullptr;
-  source.defines = nullptr;
+  source.defines = pass_shader_code_defs_get();
   return source;
 }
 

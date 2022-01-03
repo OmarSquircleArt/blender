@@ -40,6 +40,7 @@ class ShaderModule {
  private:
   char *pass_shader_code_vert_get(const GPUCodegenOutput *codegen, GPUMaterial *gpumat);
   char *pass_shader_code_frag_get(const GPUCodegenOutput *codegen, GPUMaterial *gpumat);
+  char *pass_shader_code_defs_get();
 };
 
 }  // namespace blender::compositor

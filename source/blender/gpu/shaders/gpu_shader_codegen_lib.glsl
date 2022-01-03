@@ -1,6 +1,10 @@
-
-/* Assumes GPU_VEC4 is color data. So converting to luminance like cycles. */
-#define float_from_vec4(v) dot(v.rgb, vec3(0.2126, 0.7152, 0.0722))
+/* Assumes GPU_VEC4 is color data. If this is a compositor shader, take the average of the
+ * components, otherwise, apply the luminance coefficients used by Cycles. */
+#ifdef COMPOSITOR_SHADER
+#  define float_from_vec4(v) ((v.r + v.g + v.b) / 3.0)
+#else
+#  define float_from_vec4(v) dot(v.rgb, vec3(0.2126, 0.7152, 0.0722))
+#endif
 #define float_from_vec3(v) avg(v.rgb)
 #define float_from_vec2(v) v.r
 
