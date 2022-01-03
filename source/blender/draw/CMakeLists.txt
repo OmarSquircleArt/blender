@@ -240,6 +240,7 @@ set(LIB
 )
 
 data_to_c_simple(engines/compositor/shaders/compositor_frag.glsl SRC)
+data_to_c_simple(engines/compositor/shaders/compositor_lib.glsl SRC)
 data_to_c_simple(engines/compositor/shaders/compositor_nodetree_eval_lib.glsl SRC)
 
 data_to_c_simple(engines/eevee/shaders/eevee_bsdf_lib.glsl SRC)

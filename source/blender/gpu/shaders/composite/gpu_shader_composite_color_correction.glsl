@@ -1,7 +1,6 @@
 void node_composite_color_correction(vec4 color,
                                      float mask,
                                      const vec3 enabled_channels,
-                                     const vec3 luminance_coefficients,
                                      float start_midtones,
                                      float end_midtones,
                                      float master_saturation,
@@ -72,7 +71,7 @@ void node_composite_color_correction(vec4 color,
   lift += master_lift;
 
   float inverse_gamma = 1.0 / gamma;
-  float luma = get_luminance(color.rgb, luminance_coefficients);
+  float luma = get_luminance(color.rgb, LuminanceCoefficients);
 
   vec3 corrected = luma + saturation * (color.rgb - luma);
   corrected = 0.5 + (corrected - 0.5) * contrast;

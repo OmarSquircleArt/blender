@@ -80,16 +80,12 @@ static int node_composite_gpu_colorcorrection(GPUMaterial *mat,
     enabled_channels[i] = (node->custom1 & (1 << i)) ? 1.0f : 0.0f;
   }
 
-  float luminance_coefficients[3];
-  IMB_colormanagement_get_luminance_coefficients(luminance_coefficients);
-
   return GPU_stack_link(mat,
                         node,
                         "node_composite_color_correction",
                         in,
                         out,
                         GPU_constant(enabled_channels),
-                        GPU_constant(luminance_coefficients),
                         GPU_uniform(&n->startmidtones),
                         GPU_uniform(&n->endmidtones),
                         GPU_uniform(&n->master.saturation),

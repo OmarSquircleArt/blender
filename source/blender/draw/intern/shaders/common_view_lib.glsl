@@ -22,10 +22,6 @@ layout(std140) uniform viewBlock
   vec4 CameraTexCoFactors;
   vec2 ViewportSize;
   vec2 ViewportSizeInverse;
-
-  float FrameNumber;
-
-  float ViewBlockPad1, ViewBlockPad2, ViewBlockPad3;
 };
 
 #define ViewNear (ViewVecs[0].w)

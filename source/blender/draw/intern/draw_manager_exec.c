@@ -1084,8 +1084,6 @@ static void drw_update_view(const float viewport_size[2])
   copy_v2_v2(storage->viewport_size_inv, viewport_size);
   invert_v2(storage->viewport_size_inv);
 
-  storage->frame_number = (float)DST.draw_ctx.scene->r.cfra;
-
   /* TODO(fclem): update a big UBO and only bind ranges here. */
   GPU_uniformbuf_update(G_draw.view_ubo, &DST.view_active->storage);
 

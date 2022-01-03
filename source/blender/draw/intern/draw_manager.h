@@ -413,10 +413,6 @@ typedef struct DRWViewUboStorage {
   float viewcamtexcofac[4];
   float viewport_size[2];
   float viewport_size_inv[2];
-
-  float frame_number;
-
-  float _pad[3];
 } DRWViewUboStorage;
 
 BLI_STATIC_ASSERT_ALIGN(DRWViewUboStorage, 16)

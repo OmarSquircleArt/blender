@@ -28,6 +28,7 @@ extern char datatoc_common_fullscreen_vert_glsl[];
 extern char datatoc_common_math_lib_glsl[];
 extern char datatoc_common_view_lib_glsl[];
 extern char datatoc_compositor_frag_glsl[];
+extern char datatoc_compositor_lib_glsl[];
 extern char datatoc_compositor_nodetree_eval_lib_glsl[];
 extern char datatoc_gpu_shader_codegen_lib_glsl[];
 }
@@ -38,6 +39,7 @@ ShaderModule::ShaderModule()
 {
   shader_lib_ = DRW_shader_library_create();
   /* NOTE: These need to be ordered by dependencies. */
+  DRW_SHADER_LIB_ADD(shader_lib_, compositor_lib);
   DRW_SHADER_LIB_ADD(shader_lib_, common_math_lib);
   DRW_SHADER_LIB_ADD(shader_lib_, common_view_lib);
   DRW_SHADER_LIB_ADD(shader_lib_, gpu_shader_codegen_lib);

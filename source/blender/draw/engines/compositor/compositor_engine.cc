@@ -24,9 +24,21 @@
 
 #include "DRW_render.h"
 
+#include "BLI_assert.h"
+
+#include "IMB_colormanagement.h"
+
 #include "compositor_shader.hh"
 
 namespace blender::compositor {
+
+/* Keep in sync with compositorBlock in compositor_lib.glsl. */
+typedef struct DRWCompositorUboStorage {
+  float luminance_coefficients[3];
+  float frame_number;
+} DRWCompositorUboStorage;
+
+BLI_STATIC_ASSERT_ALIGN(DRWCompositorUboStorage, 16)
 
 static ShaderModule *g_shader_module = nullptr;
 
@@ -37,6 +49,7 @@ class Instance {
  private:
   /** TODO(fclem) multipass. */
   DRWPass *pass_;
+  GPUUniformBuf *ubo_;
   GPUMaterial *gpumat_;
   /** Temp buffers to hold intermediate results or the input color. */
   GPUTexture *tmp_buffer_ = nullptr;
@@ -45,9 +58,14 @@ class Instance {
   bool enabled_;
 
  public:
-  Instance(ShaderModule &shader_module) : shaders(shader_module){};
+  Instance(ShaderModule &shader_module) : shaders(shader_module)
+  {
+    ubo_ = GPU_uniformbuf_create_ex(sizeof(DRWCompositorUboStorage), &ubo_, "DRWCompositorUbo");
+  };
+
   ~Instance()
   {
+    GPU_uniformbuf_free(ubo_);
     GPU_FRAMEBUFFER_FREE_SAFE(tmp_fb_);
   }
 
@@ -90,6 +108,8 @@ class Instance {
     pass_ = DRW_pass_create("Compositing", DRW_STATE_WRITE_COLOR);
     DRWShadingGroup *grp = DRW_shgroup_material_create(gpumat_, pass_);
 
+    sync_compositor_ubo(grp);
+
     ListBase rpasses = GPU_material_render_passes(gpumat_);
     LISTBASE_FOREACH (GPUMaterialRenderPass *, gpu_rp, &rpasses) {
       DRWRenderPass *drw_rp = DRW_render_pass_find(
@@ -120,6 +140,17 @@ class Instance {
     /* TODO(fclem) only copy if we need to. Only possible in multipass.
      * This is because dtxl->color can also be an input to the compositor. */
     GPU_texture_copy(dtxl->color, tmp_buffer_);
+  }
+
+ private:
+  void sync_compositor_ubo(DRWShadingGroup *shading_group)
+  {
+    DRWCompositorUboStorage ubo_storage;
+    IMB_colormanagement_get_luminance_coefficients(ubo_storage.luminance_coefficients);
+    ubo_storage.frame_number = (float)DRW_context_state_get()->scene->r.cfra;
+
+    GPU_uniformbuf_update(ubo_, &ubo_storage);
+    DRW_shgroup_uniform_block(shading_group, "compositorBlock", ubo_);
   }
 };
 

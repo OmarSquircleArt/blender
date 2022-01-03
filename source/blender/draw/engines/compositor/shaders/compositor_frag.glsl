@@ -1,4 +1,5 @@
 
+#pragma BLENDER_REQUIRE(compositor_lib.glsl)
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
 #pragma BLENDER_REQUIRE(compositor_nodetree_eval_lib.glsl)
 

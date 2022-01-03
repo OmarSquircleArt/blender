@@ -21,7 +21,6 @@
  * \ingroup cmpnodes
  */
 
-#include "IMB_colormanagement.h"
 #include "node_composite_util.hh"
 
 /* **************** VALTORGB ******************** */
@@ -131,11 +130,7 @@ static int node_composite_gpu_rgbtobw(GPUMaterial *mat,
                                       GPUNodeStack *in,
                                       GPUNodeStack *out)
 {
-  float luminance_coefficients[3];
-  IMB_colormanagement_get_luminance_coefficients(luminance_coefficients);
-
-  return GPU_stack_link(
-      mat, node, "color_to_luminance", in, out, GPU_constant(luminance_coefficients));
+  return GPU_stack_link(mat, node, "color_to_luminance", in, out);
 }
 
 void register_node_type_cmp_rgbtobw(void)

@@ -52,15 +52,11 @@ static int node_composite_gpu_luma_matte(GPUMaterial *mat,
 {
   const NodeChroma *data = (NodeChroma *)node->storage;
 
-  float luminance_coefficients[3];
-  IMB_colormanagement_get_luminance_coefficients(luminance_coefficients);
-
   return GPU_stack_link(mat,
                         node,
                         "node_composite_luminance_matte",
                         in,
                         out,
-                        GPU_constant(luminance_coefficients),
                         GPU_uniform(&data->t1),
                         GPU_uniform(&data->t2));
 }
